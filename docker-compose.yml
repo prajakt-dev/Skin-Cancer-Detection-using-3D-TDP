@@ -1,0 +1,21 @@
+services:
+  web:
+    build: .
+    container_name: skin-cancer-3d-tdp
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+    restart: unless-stopped
+
+  # Re-train on demand:  docker compose --profile train run --rm trainer
+  trainer:
+    build: .
+    profiles: ["train"]
+    entrypoint: ["python", "train.py"]
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports

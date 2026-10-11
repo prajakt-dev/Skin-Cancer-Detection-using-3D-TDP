@@ -1,0 +1,2 @@
+# OPTIONAL: only needed for the 3D-CNN deep-learning variant (train_cnn.py)
+torch>=2.1

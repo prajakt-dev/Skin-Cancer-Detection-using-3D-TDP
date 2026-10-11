@@ -1,0 +1,28 @@
+:root{--bg:#0f172a;--card:#ffffff;--ink:#0f172a;--mut:#64748b;--acc:#2563eb;--good:#16a34a;--bad:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#f1f5f9;color:var(--ink)}
+header{background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;padding:36px 20px;text-align:center}
+header h1{margin:0 0 6px;font-size:clamp(1.4rem,3.5vw,2.2rem)}header h1 span{color:#7dd3fc}
+header p{margin:0;opacity:.8}
+main{max-width:980px;margin:-20px auto 40px;padding:0 16px;display:grid;gap:18px}
+.card{background:var(--card);border-radius:14px;padding:22px;box-shadow:0 4px 18px rgba(15,23,42,.08)}
+h2{margin:0 0 14px;font-size:1.15rem}h3{font-size:1rem;margin:18px 0 8px}
+.muted{color:var(--mut);font-size:.9rem}
+.drop{display:block;border:2px dashed #94a3b8;border-radius:12px;padding:28px;text-align:center;cursor:pointer;color:var(--mut)}
+.drop.over,.drop:hover{border-color:var(--acc);background:#eff6ff}
+.samples{display:flex;flex-wrap:wrap;gap:10px}
+.thumb{border:2px solid transparent;border-radius:10px;padding:0;background:none;cursor:pointer;overflow:hidden}
+.thumb:hover{border-color:var(--acc)}.thumb img{width:84px;height:84px;object-fit:cover;display:block}
+.hidden{display:none}
+.verdict{font-size:1.5rem;font-weight:700;margin-bottom:10px}.verdict.good{color:var(--good)}.verdict.bad{color:var(--bad)}
+.bar{height:14px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+#barfill{height:100%;width:0;transition:width .6s}#barfill.good{background:var(--good)}#barfill.bad{background:var(--bad)}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
+.grid3 img,.wide,figure img{width:100%;border-radius:8px}figure{margin:0}figcaption{color:var(--mut);font-size:.85rem;text-align:center}
+table{width:100%;border-collapse:collapse}td{padding:7px 4px;border-bottom:1px solid #e2e8f0;font-size:.92rem}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.kpis div{background:#f8fafc;border-radius:10px;padding:14px;text-align:center}
+.kpis b{display:block;font-size:1.5rem;color:var(--acc)}.kpis span{color:var(--mut);font-size:.85rem}
+footer{text-align:center;color:var(--mut);padding:0 16px 30px;font-size:.85rem}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}}

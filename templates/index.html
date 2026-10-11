@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skin Cancer Detection using 3D-TDP</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <h1>Skin Cancer Detection using <span>3D-TDP</span></h1>
+  <p>3D Texture-Descriptor Pattern analysis of dermoscopic lesion images</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1 &middot; Upload a lesion image</h2>
+    <label id="drop" class="drop">
+      <input type="file" id="file" accept="image/*" hidden>
+      <b>Click to choose</b> or drag &amp; drop a JPG/PNG
+    </label>
+    {% if samples %}
+    <p class="muted">...or try a demo sample:</p>
+    <div class="samples">
+      {% for s in samples %}
+      <button class="thumb" data-sample="{{ s }}" title="{{ s }}"><img src="/samples/{{ s }}" alt="{{ s }}"></button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <p id="status" class="muted"></p>
+  </section>
+
+  <section id="result" class="card hidden">
+    <h2>2 &middot; Result</h2>
+    <div id="verdict" class="verdict"></div>
+    <div class="bar"><div id="barfill"></div></div>
+    <p class="muted" id="probtxt"></p>
+    <div class="grid2">
+      <figure><img id="overlay" alt="segmentation"><figcaption>Segmented lesion border</figcaption></figure>
+      <div>
+        <h3>ABCD &amp; 3D-TDP features</h3>
+        <table id="abcd"></table>
+      </div>
+    </div>
+    <h3>3D-TDP volume (8 depth slices used to compute the 3D pattern histogram)</h3>
+    <img id="montage" class="wide" alt="volume">
+  </section>
+
+  {% if metrics %}
+  <section class="card">
+    <h2>Model performance (held-out test set)</h2>
+    <div class="kpis">
+      <div><b>{{ '%.1f'|format(metrics.accuracy*100) }}%</b><span>Accuracy</span></div>
+      <div><b>{{ '%.1f'|format(metrics.recall_sensitivity*100) }}%</b><span>Sensitivity</span></div>
+      <div><b>{{ '%.1f'|format(metrics.specificity*100) }}%</b><span>Specificity</span></div>
+      <div><b>{{ '%.3f'|format(metrics.roc_auc) }}</b><span>ROC-AUC</span></div>
+    </div>
+    <p class="muted">Classifier: {{ metrics.model }} &middot; {{ metrics.n_features }} features &middot;
+      trained on {{ metrics.n_train }}, tested on {{ metrics.n_test }} images.</p>
+    <div class="grid3">
+      <img src="/reports/confusion_matrix.png" alt="cm">
+      <img src="/reports/roc_curve.png" alt="roc">
+      <img src="/reports/feature_importance.png" alt="fi">
+    </div>
+  </section>
+  {% endif %}
+</main>
+
+<footer>Educational prototype &mdash; not a medical device. Always consult a dermatologist for diagnosis.</footer>
+<script>
+const $ = id => document.getElementById(id);
+async function send(fd){
+  $('status').textContent = 'Analysing...';
+  try{
+    const r = await fetch('/api/predict', {method:'POST', body: fd});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'Request failed');
+    show(j); $('status').textContent = '';
+  }catch(e){ $('status').textContent = 'Error: ' + e.message; }
+}
+function show(j){
+  $('result').classList.remove('hidden');
+  const v = $('verdict'); v.textContent = j.label;
+  v.className = 'verdict ' + (j.is_malignant ? 'bad' : 'good');
+  const p = (j.probability_malignant*100).toFixed(1);
+  $('barfill').style.width = p + '%';
+  $('barfill').className = j.is_malignant ? 'bad' : 'good';
+  $('probtxt').textContent = 'Probability of malignancy: ' + p + '%  (model: ' + j.model_name + ')';
+  $('overlay').src = j.overlay; $('montage').src = j.volume_montage;
+  $('abcd').innerHTML = Object.entries(j.abcd).map(([k,v]) => `<tr><td>${k}</td><td><b>${v}</b></td></tr>`).join('');
+  $('result').scrollIntoView({behavior:'smooth'});
+}
+$('file').addEventListener('change', e => { if(e.target.files[0]){ const fd=new FormData(); fd.append('file', e.target.files[0]); send(fd);} });
+document.querySelectorAll('.thumb').forEach(b => b.addEventListener('click', () => { const fd=new FormData(); fd.append('sample', b.dataset.sample); send(fd); }));
+const drop = $('drop');
+['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {e.preventDefault(); drop.classList.remove('over');}));
+drop.addEventListener('drop', e => { const f=e.dataTransfer.files[0]; if(f){ const fd=new FormData(); fd.append('file', f); send(fd);} });
+</script>
+</body>
+</html>
