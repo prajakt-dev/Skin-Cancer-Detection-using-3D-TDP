@@ -154,3 +154,19 @@ This project is for **education and research only**. It is not a medical device 
 - Original project by [Alton1998](https://github.com/Alton1998).
 - Dataset provided by the [International Skin Imaging Collaboration (ISIC)](https://www.isic-archive.com/) through Kaggle. Please follow the competition's data usage rules.
 - Add your own license here (for example MIT) if you publish your version, and check the original repository's license before reusing its code.
+
+
+@"
+
+## Screenshots
+
+<p align="center">
+  <img src="images/image1.jpeg" alt="Image 1" width="600">
+</p>
+<p align="center"><em>Figure 1.</em></p>
+
+<p align="center">
+  <img src="images/image2.jpeg" alt="Image 2" width="600">
+</p>
+<p align="center"><em>Figure 2.</em></p>
+"@ | Add-Content -Path README.md -Encoding utf8
