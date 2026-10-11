@@ -1,129 +1,156 @@
-# Skin Cancer Detection using 3D-TDP
+# Skin Cancer Detection with Deep Learning (ISIC)
 
-A complete, runnable project that classifies dermoscopic skin-lesion images as **benign** or
-**malignant (suspicious)** using a **3D Texture-Descriptor Pattern (3D-TDP)** pipeline, with a web
-interface, evaluation reports and Docker support.
+A set of Jupyter notebooks for detecting skin cancer (melanoma) from skin lesion images, built around the ISIC (International Skin Imaging Collaboration) Kaggle competitions. The project walks through the full machine learning workflow: downloading the data, cleaning and formatting it, augmenting the images, and training image classification models.
 
-> **Interpretation of "3D-TDP" used here:** *3D Texture-Descriptor Pattern*. Each 2D lesion image is
-> lifted into a 3D volume of 8 complementary depth slices; a 6-neighbour 3D local pattern code is
-> computed for every voxel and its histogram becomes the descriptor. If your syllabus defines 3D-TDP
-> differently, only `src/tdp3d/features.py` needs to change - the rest (data, training, web app,
-> Docker) stays the same.
+> **Credit:** This project is based on the original repository
+> [Alton1998/ISIC-2024-Skin-Cancer-Detection-with-3D-TBP](https://github.com/Alton1998/ISIC-2024-Skin-Cancer-Detection-with-3D-TBP).
+> All original work belongs to its author.
 
 ---
-## 1. How it works (explain this to the examiner)
 
-```
-Image -> resize 128x128 -> lesion segmentation (Gaussian + Otsu + morphology)
-      -> 3D volume V(z,y,x): z = 8 slices
-           [Gray, CLAHE, Blur, Sobel edge, Laplacian, Saturation, Hue, Local-Std]
-      -> 3D-TDP: every voxel compared with its 6 neighbours (+-x, +-y, +-z)
-           => 6-bit code (0..63) => normalised histogram inside lesion (64 features)
-      -> + per-slice lesion statistics & lesion-vs-skin contrast (24)
-      -> + ABCD features: Asymmetry, Border (compactness, solidity, edge strength),
-           Colour (mean/std/diff RGB, number of colours), Diameter (area, aspect)  (18)
-      => 106 features -> Random Forest / Gradient Boosting / SVM (best chosen by 5-fold CV)
-      -> probability of malignancy -> web UI
-```
+## Table of Contents
 
-**Why 3D?** Stacking different filtered views along a depth axis lets the descriptor capture
-*cross-view* relationships (e.g. a pixel that is dark in Gray but strong in Edge and Hue), which a
-plain 2D texture descriptor cannot. The ABCD features follow the clinical dermatology rule.
+1. [Overview](#overview)
+2. [Project Structure](#project-structure)
+3. [Requirements](#requirements)
+4. [Installation](#installation)
+5. [Getting the Dataset](#getting-the-dataset)
+6. [How to Run](#how-to-run)
+7. [Troubleshooting](#troubleshooting)
+8. [Notes and Limitations](#notes-and-limitations)
+9. [Disclaimer](#disclaimer)
+10. [License and Acknowledgements](#license-and-acknowledgements)
 
-## 2. Project structure
+---
 
-```
-skin-cancer-3d-tdp/
-├── app.py                      Flask web app (UI + /api/predict + /health)
-├── train.py                    feature extraction, model selection, evaluation, reports
-├── predict.py                  command-line prediction
-├── train_cnn.py                OPTIONAL PyTorch 3D-CNN variant
-├── src/tdp3d/                  segment.py  volume.py  features.py (3D-TDP)  pipeline.py
-├── scripts/
-│   ├── generate_synthetic_data.py   creates the offline demo dataset
-│   ├── prepare_ham10000.py          converts the REAL HAM10000 dataset
-│   └── bootstrap.py                 Docker entrypoint
-├── data/images/{benign,malignant}/  dataset (500 demo images included)
-├── data/samples/                    8 unseen images for the live demo
-├── models/model.joblib              trained model (included)
-├── reports/                         metrics.json, confusion matrix, ROC, feature importance
-├── templates/ static/               web UI
-├── tests/test_pipeline.py
-├── Dockerfile  docker-compose.yml  requirements.txt
-└── .vscode/                         launch + settings for VS Code
-```
+## Overview
 
-## 3. Run in VS Code (without Docker)
+Skin cancer is most treatable when it is found early. The ISIC competitions provide labeled skin lesion images so researchers can build models that help tell benign lesions from malignant ones.
 
-Prerequisites: **Python 3.10 - 3.12** and VS Code with the *Python* extension.
+This repository contains notebooks that cover:
 
-1. Unzip the project, then in VS Code: **File -> Open Folder -> skin-cancer-3d-tdp**.
-2. Open the terminal (**Ctrl + `**) and create a virtual environment:
-   - Windows (PowerShell): `python -m venv .venv` then `.venv\Scripts\Activate.ps1`
-     (if blocked: `Set-ExecutionPolicy -Scope Process Bypass`)
-   - macOS / Linux: `python3 -m venv .venv && source .venv/bin/activate`
-3. Select the interpreter: **Ctrl+Shift+P -> "Python: Select Interpreter" -> .venv**.
-4. Install dependencies: `pip install -r requirements.txt`
-5. *(Dataset is already included. To regenerate: `python scripts/generate_synthetic_data.py --force`)*
-6. Train: `python train.py`  (about 10 s; prints metrics, writes `models/` and `reports/`)
-7. Start the app: `python app.py` and open **http://127.0.0.1:5000**
-8. In the browser click a demo sample (or upload any image) to see the prediction, segmentation,
-   ABCD values and the 3D-TDP volume slices.
+- **Data download:** fetching the competition data from Kaggle.
+- **Data formatting:** loading metadata and images into a clean, model-ready structure.
+- **Data augmentation:** creating extra training variations of images (flips, rotations, etc.) to help the model generalize.
+- **Model training:** training image classifiers, including a model trained from scratch and a Vision Transformer.
 
-Shortcuts: **Run and Debug** panel (F5) has ready configs: *Generate demo dataset*, *Train model*,
-*Run web app*. Tests: `pip install pytest` then `pytest tests`. CLI: `python predict.py data/samples/sample_malignant_1.jpg`.
+## Project Structure
 
-## 4. Run with Docker
+| File | Purpose |
+|------|---------|
+| `Downloader.ipynb` | Downloads the dataset from Kaggle |
+| `Data Formatter.ipynb` | Reads and prepares the metadata and images |
+| `Data Augmenter.ipynb` | Applies image augmentation |
+| `Trainer.ipynb` | Model training notebook |
+| `Trainer_Scratch.ipynb` | Trains a model from scratch |
+| `Vision Tranformer.ipynb` | Trains a Vision Transformer model |
+| `docker-compose.yml` | Optional Docker setup |
 
-Install Docker Desktop, then in the project folder:
+## Requirements
+
+- Python 3.10 or 3.11
+- VS Code with the **Python** and **Jupyter** extensions (or JupyterLab)
+- A free [Kaggle](https://www.kaggle.com) account
+- Several GB of free disk space for the data
+- An NVIDIA GPU is strongly recommended for training. Without one, use Kaggle Notebooks or Google Colab, which offer free GPUs.
+
+Main Python libraries (install any others when a notebook reports a missing module):
+`jupyter`, `ipykernel`, `pandas`, `numpy`, `matplotlib`, `scikit-learn`, `opencv-python`, `pillow`, `tqdm`, `h5py`, `kaggle`, `torch`, `torchvision`
+
+## Installation
+
+**1. Clone or download the repository**
 
 ```bash
-docker compose up --build          # first run builds the image (~2 min)
-# open http://localhost:5000
-docker compose --profile train run --rm trainer     # (optional) retrain inside Docker
-docker compose down                                  # stop
+git clone https://github.com/<your-username>/<your-repo-name>.git
+cd <your-repo-name>
 ```
-Plain Docker alternative:
-```bash
-docker build -t skin-cancer-3d-tdp .
-docker run -p 5000:5000 -v "$(pwd)/data:/app/data" -v "$(pwd)/models:/app/models" skin-cancer-3d-tdp
+
+Or click **Code → Download ZIP** on GitHub and extract it.
+
+**2. Create and activate a virtual environment**
+
+Windows (PowerShell):
+
+```powershell
+python -m venv venv
+venv\Scripts\activate
 ```
-The container auto-generates data and trains a model if they are missing, then serves with gunicorn.
-Health check: `http://localhost:5000/health`.
 
-## 5. Using the REAL dataset (recommended for the final report)
-
-The included images are **synthetic** (generated so the project runs offline). For real clinical
-images use **HAM10000** (10,015 dermoscopic images; free):
-- Kaggle: search "Skin Cancer MNIST: HAM10000" - or - Harvard Dataverse / ISIC Archive.
+macOS / Linux:
 
 ```bash
-python scripts/prepare_ham10000.py --src path/to/ham10000 --max-per-class 1500
-python train.py
+python -m venv venv
+source venv/bin/activate
 ```
-Mapping: malignant = `mel, bcc, akiec`; benign = `nv, bkl, df, vasc`. The app and Docker use the new
-model automatically (restart the app).  Real-data accuracy will be lower than on the synthetic set -
-report it honestly.
 
-## 6. Results on the included demo data (100 held-out images)
+**3. Install the dependencies**
 
-Gradient Boosting selected by CV: accuracy about 89 %, sensitivity 92 %, specificity 86 %, ROC-AUC 0.96
-(see `reports/metrics.json` and the PNG plots; exact numbers vary slightly per run/platform).
-These numbers are for **synthetic** data and must not be presented as clinical performance.
+```bash
+python -m pip install --upgrade pip
+pip install jupyter ipykernel pandas numpy matplotlib scikit-learn opencv-python pillow tqdm h5py kaggle
+pip install torch torchvision
+```
 
-## 7. Likely viva questions
+**4. Open the project in VS Code**
 
-- **What is 3D-TDP?** A 3D local pattern histogram computed on a stack of filtered views of the lesion.
-- **Why not only a CNN?** Small, explainable, fast, no GPU; `train_cnn.py` shows the deep variant.
-- **What are ABCD features?** Asymmetry, Border irregularity, Colour variation, Diameter - the clinical rule.
-- **How did you avoid leakage?** Stratified train/test split; model chosen with CV on the training part only.
-- **Which metric matters most?** Sensitivity (missing a cancer is worse than a false alarm); ROC-AUC for overall quality.
-- **Limitations?** Synthetic demo data, binary task, no skin-tone diversity analysis, not clinically validated.
-- **Future work:** real HAM10000/ISIC training, 3D total-body photography, Grad-CAM, multi-class (7 types).
+Open the folder, open any `.ipynb` file, click **Select Kernel**, and choose the `venv` environment.
 
-## 8. Troubleshooting
-- `ModuleNotFoundError` -> venv not active / `pip install -r requirements.txt` not run.
-- Port 5000 busy (macOS AirPlay) -> change the port at the bottom of `app.py` (and in docker-compose).
-- Docker on Windows: make sure Docker Desktop is running; use PowerShell and `${PWD}` instead of `$(pwd)`.
+## Getting the Dataset
 
-**Disclaimer:** educational prototype, not a medical device.
+1. Log in to Kaggle and open the competition page:
+   - ISIC 2024: <https://www.kaggle.com/competitions/isic-2024-challenge>
+   - SIIM-ISIC Melanoma (2020): <https://www.kaggle.com/competitions/siim-isic-melanoma-classification>
+2. Click **Join Competition / I Understand and Accept**. Downloads fail with a `403 Forbidden` error until you accept the rules for that competition.
+3. Create an API token in Kaggle: **Settings → API → Create New Token**.
+4. Set the token in your terminal (Windows PowerShell shown):
+
+   ```powershell
+   $env:KAGGLE_API_TOKEN="your_token_here"
+   ```
+
+   Never commit your token to GitHub.
+5. Download the data:
+
+   ```bash
+   kaggle competitions download -c isic-2024-challenge -p data
+   ```
+
+6. Extract the zip into the `data` folder.
+
+## How to Run
+
+Run the notebooks from top to bottom, in this order:
+
+1. `Downloader.ipynb` (skip it if you downloaded the data manually)
+2. `Data Formatter.ipynb`
+3. `Data Augmenter.ipynb`
+4. One training notebook: `Trainer.ipynb`, `Trainer_Scratch.ipynb`, or `Vision Tranformer.ipynb`
+
+Before running each notebook, check the first cells for file paths (such as `/kaggle/input/...`) and change them to match your local `data` folder.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `403 Forbidden` when downloading | Accept the competition rules on Kaggle and verify your phone number in Kaggle Settings |
+| `FileNotFoundError` | The path in the notebook does not match your folder. Update it to your data location |
+| `ModuleNotFoundError: No module named 'xyz'` | Run `pip install xyz`, then re-run the cell |
+| Training is extremely slow or runs out of memory | Use a GPU, reduce the batch size or image size, or run on Kaggle Notebooks / Google Colab |
+| PowerShell blocks `venv\Scripts\activate` | Run `Set-ExecutionPolicy -Scope Process Bypass` and try again |
+
+## Notes and Limitations
+
+- Some notebooks may expect the folder layout of the 2020 SIIM-ISIC Melanoma data (for example `siim-isic-melanoma-classification/train.csv`). The 2024 data uses different file names (such as `train-metadata.csv`), so paths and column names may need to be adjusted.
+- There is no `requirements.txt` yet, so dependencies are installed as the notebooks need them.
+- Results depend on the dataset used, your hardware, and the training settings you choose.
+
+## Disclaimer
+
+This project is for **education and research only**. It is not a medical device and must not be used to diagnose, treat, or make decisions about any medical condition. Always consult a qualified healthcare professional about skin concerns.
+
+## License and Acknowledgements
+
+- Original project by [Alton1998](https://github.com/Alton1998).
+- Dataset provided by the [International Skin Imaging Collaboration (ISIC)](https://www.isic-archive.com/) through Kaggle. Please follow the competition's data usage rules.
+- Add your own license here (for example MIT) if you publish your version, and check the original repository's license before reusing its code.
